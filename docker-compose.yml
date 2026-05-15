@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sabana_market_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sabana_market
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sabana_market"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - sabana_pg_data:/var/lib/postgresql/data
+
+volumes:
+  sabana_pg_data:
