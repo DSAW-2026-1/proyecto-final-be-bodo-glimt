@@ -7,8 +7,11 @@ async function createConversation(req, res) {
   if (sellerId === buyerId) return res.status(400).json({ error: 'No puedes iniciar conversación contigo mismo' });
 
   try {
-    // Check if users exist
-    const users = await pool.query('SELECT id FROM users WHERE id = ANY($1::uuid[])', [[buyerId, sellerId]]);
+    // Check that buyer and seller exist
+    const users = await pool.query(
+      'SELECT id FROM users WHERE id = $1 OR id = $2',
+      [buyerId, sellerId]
+    );
     if (users.rowCount < 2) return res.status(404).json({ error: 'Usuario(s) no encontrado(s)' });
 
     // If conversation exists for same buyer/seller/product, return it

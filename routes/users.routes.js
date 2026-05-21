@@ -23,4 +23,8 @@ router.put(
   users.updateUser
 );
 
+const purchases = require('../controllers/purchases.controller');
+
+router.get('/:id/purchases', authenticate, purchases.getUserPurchases);
+
 module.exports = router;
