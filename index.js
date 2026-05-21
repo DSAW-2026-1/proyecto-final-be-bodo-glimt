@@ -13,7 +13,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'sabana-market', tickets: 'TKT-01–TKT-07' });
+  res.json({ ok: true, service: 'sabana-market', tickets: 'TKT-14–TKT-20' });
 });
 
 app.use('/auth', authRoutes);

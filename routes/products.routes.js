@@ -7,6 +7,7 @@ const { sanitizeBody, validate } = require('../middleware/validate');
 const router = express.Router();
 
 router.get('/', products.listProducts);
+router.get('/:id', products.getProductById);
 
 router.post(
   '/',

@@ -5,10 +5,46 @@ async function listProducts(req, res) {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const offset = (page - 1) * limit;
+  const query = String(req.query.q || '').trim();
+  const category = String(req.query.category || '').trim();
+  const state = String(req.query.state || '').trim();
+  const minPrice = Number(req.query.min_price);
+  const maxPrice = Number(req.query.max_price);
+
+  const conditions = ['p.active = TRUE'];
+  const values = [];
+  let idx = 1;
+
+  if (category && category.toLowerCase() !== 'todos') {
+    conditions.push(`p.category = $${idx++}`);
+    values.push(category);
+  }
+  if (state && ['nuevo', 'usado'].includes(state)) {
+    conditions.push(`p.state = $${idx++}`);
+    values.push(state);
+  }
+  if (query) {
+    conditions.push(
+      `(p.title ILIKE $${idx} OR p.description ILIKE $${idx} OR p.category ILIKE $${idx})`
+    );
+    values.push(`%${query}%`);
+    idx += 1;
+  }
+  if (!Number.isNaN(minPrice) && minPrice >= 0) {
+    conditions.push(`p.price >= $${idx++}`);
+    values.push(minPrice);
+  }
+  if (!Number.isNaN(maxPrice) && maxPrice >= 0) {
+    conditions.push(`p.price <= $${idx++}`);
+    values.push(maxPrice);
+  }
+
+  const whereSql = conditions.join(' AND ');
 
   try {
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int AS n FROM products WHERE active = TRUE`
+      `SELECT COUNT(*)::int AS n FROM products p WHERE ${whereSql}`,
+      values
     );
     const total = countResult.rows[0].n;
 
@@ -18,10 +54,10 @@ async function listProducts(req, res) {
               u.name AS seller_name
        FROM products p
        JOIN users u ON u.id = p.seller_id
-       WHERE p.active = TRUE
+       WHERE ${whereSql}
        ORDER BY p.created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      values.concat([limit, offset])
     );
 
     return res.status(200).json({
@@ -32,6 +68,44 @@ async function listProducts(req, res) {
     });
   } catch (err) {
     console.error('[listProducts]', err.message);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+async function getProductById(req, res) {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT p.id, p.title, p.description, p.price, p.category, p.state, p.image_urls,
+              p.seller_id, p.created_at, p.updated_at,
+              u.name AS seller_name, u.email AS seller_email
+       FROM products p
+       JOIN users u ON u.id = p.seller_id
+       WHERE p.id = $1 AND p.active = TRUE`,
+      [id]
+    );
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    const row = result.rows[0];
+    return res.status(200).json({
+      product: {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        price: Number(row.price),
+        category: row.category,
+        state: row.state,
+        imageUrls: row.image_urls,
+        sellerId: row.seller_id,
+        sellerName: row.seller_name,
+        sellerEmail: row.seller_email,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      },
+    });
+  } catch (err) {
+    console.error('[getProductById]', err.message);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
@@ -162,4 +236,4 @@ async function updateProduct(req, res) {
   }
 }
 
-module.exports = { listProducts, createProduct, updateProduct };
+module.exports = { listProducts, getProductById, createProduct, updateProduct };
