@@ -6,6 +6,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const authRoutes = require('./routes/auth.routes');
 const usersRoutes = require('./routes/users.routes');
 const productsRoutes = require('./routes/products.routes');
+const conversationsRoutes = require('./routes/conversations.routes');
+const purchasesRoutes = require('./routes/purchases.routes');
+const reviewsRoutes = require('./routes/reviews.routes');
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -19,6 +22,9 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/users', usersRoutes);
 app.use('/products', productsRoutes);
+app.use('/conversations', conversationsRoutes);
+app.use('/purchases', purchasesRoutes);
+app.use('/users', reviewsRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'No encontrado' });

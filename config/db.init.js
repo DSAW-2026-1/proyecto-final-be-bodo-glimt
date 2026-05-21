@@ -44,6 +44,48 @@ CREATE INDEX IF NOT EXISTS idx_products_active   ON products(active);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 CREATE INDEX IF NOT EXISTS idx_products_price    ON products(price);
 CREATE INDEX IF NOT EXISTS idx_products_seller   ON products(seller_id);
+
+CREATE TABLE IF NOT EXISTS purchases (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  buyer_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  product_id  UUID        NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  seller_id   UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  price       NUMERIC(12,2) NOT NULL CHECK (price > 0),
+  status      TEXT        NOT NULL DEFAULT 'created',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  buyer_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  seller_id   UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  product_id  UUID        REFERENCES products(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id       UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text            TEXT        NOT NULL,
+  read            BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  reviewer_id UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  seller_id   UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rating      NUMERIC(2,1) NOT NULL CHECK (rating >= 0 AND rating <= 5),
+  comment     TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_buyer ON conversations(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_seller ON conversations(seller_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_seller ON reviews(seller_id);
 `;
 
 function sleep(ms) {
