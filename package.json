@@ -1,7 +1,7 @@
 {
   "name": "sabana-market-backend",
   "version": "1.0.0",
-  "description": "API REST Sabana Marketplace – TKT-01 al TKT-07",
+  "description": "API REST Sabana Marketplace – TKT-01 al TKT-20",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",

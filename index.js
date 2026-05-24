@@ -8,7 +8,9 @@ const usersRoutes = require('./routes/users.routes');
 const productsRoutes = require('./routes/products.routes');
 const conversationsRoutes = require('./routes/conversations.routes');
 const purchasesRoutes = require('./routes/purchases.routes');
+const ordersRoutes = require('./routes/orders.routes');
 const reviewsRoutes = require('./routes/reviews.routes');
+const reviewsUsersRoutes = require('./routes/reviews.users.routes');
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -24,7 +26,9 @@ app.use('/users', usersRoutes);
 app.use('/products', productsRoutes);
 app.use('/conversations', conversationsRoutes);
 app.use('/purchases', purchasesRoutes);
-app.use('/users', reviewsRoutes);
+app.use('/orders', ordersRoutes);
+app.use('/reviews', reviewsRoutes);
+app.use('/users', reviewsUsersRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'No encontrado' });
