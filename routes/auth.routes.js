@@ -30,6 +30,7 @@ router.post(
   auth.login
 );
 
+router.get('/me', authenticate, auth.me);
 router.post('/logout', authenticate, auth.logout);
 
 module.exports = router;

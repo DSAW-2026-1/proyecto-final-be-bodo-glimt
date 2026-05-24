@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const { getJwtSecret } = require('../config/jwt');
 const { sendPgOr500 } = require('../utils/pgErrors');
 
 const SALT_ROUNDS = 10;
@@ -40,7 +41,7 @@ async function register(req, res) {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
@@ -90,7 +91,7 @@ async function login(req, res) {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
@@ -106,6 +107,36 @@ async function login(req, res) {
     });
   } catch (err) {
     return sendPgOr500(res, err, '[login]');
+  }
+}
+
+async function me(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT id, email, name, career, photo_url, reputation, role, status
+       FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+    if (!result.rowCount) {
+      return res.status(401).json({ error: 'Token inválido o expirado' });
+    }
+    const u = result.rows[0];
+    if (u.status === 'suspendido') {
+      return res.status(403).json({ error: 'Cuenta suspendida' });
+    }
+    return res.status(200).json({
+      user: {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        career: u.career,
+        photoUrl: u.photo_url,
+        reputation: u.reputation != null ? Number(u.reputation) : null,
+        role: u.role,
+      },
+    });
+  } catch (err) {
+    return sendPgOr500(res, err, '[me]');
   }
 }
 
@@ -130,4 +161,4 @@ async function logout(req, res) {
   }
 }
 
-module.exports = { register, login, logout };
+module.exports = { register, login, logout, me };

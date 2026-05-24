@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const { getJwtSecret } = require('../config/jwt');
 
 async function getUser(req, res) {
   const { id } = req.params;
@@ -119,7 +120,7 @@ async function becomeSeller(req, res) {
 
     const token = jwt.sign(
       { id, email, role: 'seller' },
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
