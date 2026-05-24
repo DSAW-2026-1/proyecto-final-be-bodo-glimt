@@ -51,7 +51,7 @@ async function listProducts(req, res) {
     const rows = await pool.query(
       `SELECT p.id, p.title, p.description, p.price, p.category, p.state, p.image_urls,
               p.seller_id, p.created_at, p.updated_at,
-              u.name AS seller_name
+              u.name AS seller_name, u.reputation AS seller_reputation
        FROM products p
        JOIN users u ON u.id = p.seller_id
        WHERE ${whereSql}
@@ -78,7 +78,7 @@ async function getProductById(req, res) {
     const result = await pool.query(
       `SELECT p.id, p.title, p.description, p.price, p.category, p.state, p.image_urls,
               p.seller_id, p.created_at, p.updated_at,
-              u.name AS seller_name, u.email AS seller_email
+              u.name AS seller_name, u.email AS seller_email, u.reputation AS seller_reputation
        FROM products p
        JOIN users u ON u.id = p.seller_id
        WHERE p.id = $1 AND p.active = TRUE`,
@@ -100,6 +100,7 @@ async function getProductById(req, res) {
         sellerId: row.seller_id,
         sellerName: row.seller_name,
         sellerEmail: row.seller_email,
+        sellerReputation: row.seller_reputation != null ? Number(row.seller_reputation) : null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       },
