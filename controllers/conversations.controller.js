@@ -1,6 +1,13 @@
 const pool = require('../config/db');
 const { paginate } = require('../utils/paginate');
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(v) {
+  return typeof v === 'string' && UUID_RE.test(v.trim());
+}
+
 /**
  * TKT-15: Crear o reutilizar conversación comprador–vendedor por producto.
  * POST /conversations  { productId }  o  { sellerId, productId? }
@@ -11,13 +18,20 @@ async function createConversation(req, res) {
 
   try {
     if (productId) {
+      if (!isUuid(productId)) {
+        return res.status(400).json({ error: 'productId inválido' });
+      }
       const p = await pool.query(
         'SELECT id, seller_id, active FROM products WHERE id = $1',
-        [productId]
+        [productId.trim()]
       );
       if (!p.rowCount) return res.status(404).json({ error: 'Producto no disponible' });
       if (!p.rows[0].active) return res.status(404).json({ error: 'Producto no disponible' });
       sellerId = p.rows[0].seller_id;
+    }
+
+    if (sellerId && !isUuid(sellerId)) {
+      return res.status(400).json({ error: 'sellerId inválido' });
     }
 
     if (!sellerId) return res.status(400).json({ error: 'productId o sellerId requerido' });
@@ -28,14 +42,24 @@ async function createConversation(req, res) {
     const users = await pool.query('SELECT id FROM users WHERE id = $1 OR id = $2', [buyerId, sellerId]);
     if (users.rowCount < 2) return res.status(404).json({ error: 'Usuario(s) no encontrado(s)' });
 
-    const ex = await pool.query(
-      `SELECT id, product_id, buyer_id, seller_id, created_at
-       FROM conversations
-       WHERE buyer_id = $1 AND seller_id = $2
-         AND (($3::uuid IS NULL AND product_id IS NULL) OR product_id = $3)
-       LIMIT 1`,
-      [buyerId, sellerId, productId || null]
-    );
+    let ex;
+    if (productId) {
+      ex = await pool.query(
+        `SELECT id, product_id, buyer_id, seller_id, created_at
+         FROM conversations
+         WHERE buyer_id = $1 AND seller_id = $2 AND product_id = $3
+         LIMIT 1`,
+        [buyerId, sellerId, productId.trim()]
+      );
+    } else {
+      ex = await pool.query(
+        `SELECT id, product_id, buyer_id, seller_id, created_at
+         FROM conversations
+         WHERE buyer_id = $1 AND seller_id = $2 AND product_id IS NULL
+         LIMIT 1`,
+        [buyerId, sellerId]
+      );
+    }
 
     if (ex.rowCount) {
       const row = ex.rows[0];
@@ -66,7 +90,10 @@ async function createConversation(req, res) {
       conversation: row,
     });
   } catch (err) {
-    console.error('[createConversation]', err.message);
+    console.error('[createConversation]', err.code, err.message);
+    if (err.code === '42P01') {
+      return res.status(503).json({ error: 'Base de datos en configuración, intenta en unos segundos' });
+    }
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
@@ -93,14 +120,14 @@ async function listConversations(req, res) {
        JOIN users su ON su.id = c.seller_id
        LEFT JOIN products p ON p.id = c.product_id
        LEFT JOIN LATERAL (
-         SELECT text AS content, created_at AS sent_at
-         FROM messages
-         WHERE conversation_id = c.id
-         ORDER BY created_at DESC
+         SELECT m.text AS content, m.created_at AS sent_at
+         FROM messages m
+         WHERE m.conversation_id = c.id
+         ORDER BY m.created_at DESC
          LIMIT 1
        ) lm ON TRUE
        WHERE c.buyer_id = $1 OR c.seller_id = $1
-       ORDER BY COALESCE(lm.sent_at, c.updated_at, c.created_at) DESC`,
+       ORDER BY COALESCE(lm.sent_at, c.updated_at, c.created_at) DESC NULLS LAST`,
       [uid]
     );
 

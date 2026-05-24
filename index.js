@@ -35,16 +35,19 @@ app.use((_req, res) => {
 });
 
 const pool = require('./config/db');
+const { runMigrations } = require('./config/migrate');
 const { mapPgError, unwrapDriverError } = require('./utils/pgErrors');
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Sabana Market API http://localhost:${PORT}`);
-  pool
-    .query('SELECT 1')
-    .then(() => console.log('Base de datos: conexión OK'))
-    .catch((err) => {
-      const m = mapPgError(err);
-      const e = unwrapDriverError(err);
-      console.error('Base de datos:', m ? m.message : e.message || err.message);
-    });
+  try {
+    await pool.query('SELECT 1');
+    console.log('Base de datos: conexión OK');
+    await runMigrations(pool);
+    console.log('Migraciones: tablas OK');
+  } catch (err) {
+    const m = mapPgError(err);
+    const e = unwrapDriverError(err);
+    console.error('Base de datos:', m ? m.message : e.message || err.message);
+  }
 });

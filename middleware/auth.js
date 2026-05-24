@@ -32,8 +32,11 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ error: 'Sesión cerrada, vuelve a iniciar sesión' });
     }
   } catch (err) {
-    console.error('[authenticate] blacklist:', err.message);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    // 42P01 = tabla token_blacklist aún no creada (se crea al arrancar con migrate)
+    if (err.code !== '42P01') {
+      console.error('[authenticate] blacklist:', err.message);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
   }
 
   try {
